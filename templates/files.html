@@ -1,0 +1,830 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="files-container">
+  <!-- Breadcrumb Navigation -->
+  {% if current_path %}
+  <div class="breadcrumbs">
+    {% for crumb in breadcrumbs %} {% if not loop.last %}
+    <div class="breadcrumb-item">
+      <a
+        href="{{ url_for('files', folder_path=crumb.path) }}"
+        class="breadcrumb-link"
+      >
+        {{ crumb.name }}
+      </a>
+      <span class="breadcrumb-separator">›</span>
+    </div>
+    {% else %}
+    <div class="breadcrumb-current">{{ crumb.name }}</div>
+    {% endif %} {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    {% if not current_path %}
+    <h1>Overview</h1>
+    <p class="drag-text">Here's how your files and folders stack up.</p>
+    {% endif %}
+
+    <!-- Statistics -->
+    {% if items %}
+    <div class="stats-container">
+      {% set folder_count = items|selectattr('type', 'equalto',
+      'folder')|list|length %} {% set file_count = items|selectattr('type',
+      'equalto', 'file')|list|length %}
+
+      <div class="stat-card">
+        <div class="stat-number">{{ folder_count + file_count }}</div>
+        <div class="stat-label">Total Items</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ folder_count }}</div>
+        <div class="stat-label">Folders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ file_count }}</div>
+        <div class="stat-label">Files</div>
+      </div>
+    </div>
+    {% endif %} {% if not current_path %}
+    <!-- Files & Folders Section -->
+    <h1>Your Folders & Files</h1>
+    <p class="drag-text">Browse and manage all your stored content.</p>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button id="createFolderBtn" class="btn btn-primary">
+        Create New Folder
+      </button>
+      <button id="uploadFilesBtn" class="btn btn-secondary">
+        Upload Files
+      </button>
+    </div>
+
+    <!-- Items Table -->
+    <div class="items-table-container">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Items</th>
+            <th>Size</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if items %} {% for item in items %} {% if item.type == 'folder' %}
+          <tr class="item-row folder-row">
+            <td class="item-name-cell">
+              <div
+                class="item-name clickable-name"
+                onclick="navigateToFolder('{{ current_path + '/' + item.name if current_path else item.name }}')"
+              >
+                {{ item.icon|safe }} <span class="item-text">{{ item.name }}</span>
+              </div>
+            </td>
+            <td class="item-type-cell">Folder</td>
+            <td class="item-count-cell">{{ item.item_count }}</td>
+            <td class="item-size-cell">-</td>
+            <td class="item-actions-cell">
+              <button
+                onclick="event.stopPropagation(); openRenameModal('folder', '{{ item.name }}', '{{ current_path + '/' + item.name if current_path else item.name }}')"
+                class="btn-action"
+                title="Rename"
+              >
+                {{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"/><path d=\"m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z\"/></svg>'|safe }}
+              </button>
+              <a
+                href="{{ url_for('delete_item', item_path=current_path + '/' + item.name if current_path else item.name) }}"
+                onclick="return confirmDelete('folder', '{{ item.name }}')"
+                class="btn-action delete"
+                title="Delete"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"3,6 5,6 21,6\"/><path d=\"m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2\"/><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"/><line x1=\"14\" y1=\"11\" x2=\"14\" y2=\"17\"/></svg>'|safe }}</a
+              >
+            </td>
+          </tr>
+          {% else %}
+          <tr class="item-row file-row">
+            <td class="item-name-cell">
+              <div class="item-name">
+                {{ item.icon|safe }} <span class="item-text">{{ item.name }}</span>
+              </div>
+            </td>
+            <td class="item-type-cell">{{ item.category|title }}</td>
+            <td class="item-count-cell">-</td>
+            <td class="item-size-cell">{{ (item.size / 1024)|round(2) }} KB</td>
+            <td class="item-actions-cell">
+              {% set file_ext = item.name.split('.')[-1].lower() if '.' in item.name else '' %}
+              {% set is_txt = file_ext == 'txt' %}
+              {% set is_audio = item.category == 'audio' %}
+
+              {% if is_txt %}
+              <a
+                href="{{ url_for('preview_file', file_path=(current_path + '/' + item.name) if current_path else item.name) }}"
+                target="_blank"
+                class="btn-action"
+                title="Preview"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>'|safe }}</a
+              >
+              {% endif %}
+
+              {% if is_audio %}
+              <button
+                onclick="toggleAudioPlay('{{ (current_path + '/' + item.name) if current_path else item.name }}', this)"
+                class="btn-action play-btn"
+                title="Play"
+                data-playing="false"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polygon points=\"5,3 19,12 5,21 5,3\"/></svg>'|safe }}</button
+              >
+              {% endif %}
+
+              {% if item.category == 'video' %}
+              <button
+                onclick="openVideoModal('{{ (current_path + '/' + item.name) if current_path else item.name }}', '{{ item.name }}')"
+                class="btn-action play-btn"
+                title="Play Video"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polygon points=\"5,3 19,12 5,21 5,3\"/></svg>'|safe }}</button
+              >
+              {% endif %}
+
+              <a
+                href="{{ url_for('download_file', file_path=(current_path + '/' + item.name) if current_path else item.name) }}"
+                class="btn-action"
+                title="Download"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"7,10 12,15 17,10\"/><line x1=\"12\" y1=\"15\" x2=\"12\" y2=\"3\"/></svg>'|safe }}</a
+              >
+              <button
+                onclick="event.stopPropagation(); openRenameModal('file', '{{ item.name }}', '{{ (current_path + '/' + item.name) if current_path else item.name }}')"
+                class="btn-action"
+                title="Rename"
+              >
+                {{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"/><path d=\"m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z\"/></svg>'|safe }}
+              </button>
+              <a
+                href="{{ url_for('delete_item', item_path=(current_path + '/' + item.name) if current_path else item.name) }}"
+                onclick="return confirmDelete('file', '{{ item.name }}')"
+                class="btn-action delete"
+                title="Delete"
+                >{{ '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"3,6 5,6 21,6\"/><path d=\"m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2\"/><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"/><line x1=\"14\" y1=\"11\" x2=\"14\" y2=\"17\"/></svg>'|safe }}</a
+              >
+            </td>
+          </tr>
+          {% endif %} {% endfor %} {% else %}
+          <tr>
+            <td colspan="5" class="no-items-cell">
+              <div class="no-items">
+                <div class="no-items-icon">{{ '<svg width=\"48\" height=\"48\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\"><path d=\"M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z\"/></svg>'|safe }}</div>
+                {% if current_path %}
+                <h3>This folder is empty</h3>
+                <p>Start by creating a folder or uploading files!</p>
+                {% else %}
+                <h3>No files or folders yet</h3>
+                <p>Get started by creating your first folder or uploading files!</p>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Upload Files Modal -->
+    <div id="uploadModal" class="upload-modal">
+      <div class="upload-modal-content">
+        <div class="upload-modal-header">
+          <h3 class="upload-modal-title">Upload Files</h3>
+          <button class="close-upload-modal" onclick="closeUploadModal()">
+            &times;
+          </button>
+        </div>
+        <div class="upload-modal-body">
+          <div class="upload-zone-modal" id="uploadZoneModal">
+            <h3>Drag & Drop Files Here</h3>
+            <p>or click to browse your computer</p>
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+              <input
+                type="hidden"
+                name="current_path"
+                value="{{ current_path }}"
+              />
+              <input
+                type="file"
+                name="files"
+                id="fileInput"
+                class="file-input"
+                multiple
+              />
+              <button
+                type="button"
+                id="selectFilesBtn"
+                class="btn btn-secondary"
+              >
+                Select Files
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="upload-modal-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeUploadModal()"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="uploadForm"
+            class="btn btn-primary"
+            id="saveBtn"
+            disabled
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Folder Creation Modal -->
+<div id="folderModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Create New Folder</h3>
+      <button class="close-modal" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="createFolderForm" method="POST" action="{{ url_for('create_folder') }}">
+        <input type="hidden" name="current_path" value="{{ current_path }}" />
+        <div class="form-group">
+          <label for="newFolderName">Folder Name:</label>
+          <input
+            type="text"
+            id="newFolderName"
+            name="new_folder_name"
+            required
+            placeholder="Enter folder name"
+          />
+        </div>
+      </form>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">
+        Cancel
+      </button>
+      <button type="submit" form="createFolderForm" class="btn btn-primary" id="folderSaveBtn" onclick="return validateFolderForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div id="renameModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="renameModalTitle">Rename Item</h3>
+      <button class="close-modal" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="renameForm" method="POST" action="{{ url_for('rename_item') }}">
+        <input type="hidden" name="item_path" id="renameItemPath" value="" />
+        <div class="form-group">
+          <label for="renameNewName">New Name:</label>
+          <input
+            type="text"
+            id="renameNewName"
+            name="new_name"
+            required
+            placeholder="Enter new name"
+          />
+        </div>
+      </form>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">
+        Cancel
+      </button>
+      <button type="submit" form="renameForm" class="btn btn-primary" id="renameSaveBtn" disabled>
+        Rename
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Video Modal -->
+<div id="videoModal" class="upload-modal">
+  <div class="upload-modal-content">
+    <div class="upload-modal-header">
+      <h3 class="upload-modal-title" id="videoModalTitle">Video Player</h3>
+      <button class="close-upload-modal" onclick="closeVideoModal()">&times;</button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="upload-zone-modal video-zone-modal">
+        <video id="videoPlayer" controls style="width: 100%; height: 100%; margin: 0; border: none;">
+          <p>Your browser doesn't support HTML5 video. Here is a <a href="#" id="videoFallbackLink">link to the video</a> instead.</p>
+        </video>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Allowed file extensions from server
+  const allowedExtensions = new Set(JSON.parse('{{ allowed_extensions|tojson }}'));
+
+  function showSnackbar(message, type = 'error') {
+    // Remove existing snackbars
+    const existingSnackbars = document.querySelectorAll('.snackbar');
+    existingSnackbars.forEach(snackbar => snackbar.remove());
+
+    // Create new snackbar
+    const snackbar = document.createElement('div');
+    snackbar.className = `snackbar snackbar-${type}`;
+    snackbar.textContent = message;
+
+    // Add to page
+    document.body.appendChild(snackbar);
+
+    // Show snackbar
+    setTimeout(() => snackbar.classList.add('show'), 100);
+
+    // Hide after 3 seconds
+    setTimeout(() => {
+      snackbar.classList.remove('show');
+      setTimeout(() => snackbar.remove(), 300);
+    }, 3000);
+  }
+
+  function validateFiles(files) {
+    let hasInvalidFiles = false;
+    for (let file of files) {
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (!allowedExtensions.has(extension)) {
+        hasInvalidFiles = true;
+        break;
+      }
+    }
+    return !hasInvalidFiles;
+  }
+
+  function resetFileSelection() {
+    const fileInput = document.getElementById("fileInput");
+    const selectBtn = document.getElementById("selectFilesBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    
+    // Clear file input
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    
+    // Reset button text and styles
+    if (selectBtn) {
+      selectBtn.textContent = "Select Files";
+      selectBtn.style.background = "";
+      selectBtn.style.color = "";
+      selectBtn.style.border = "";
+    }
+    
+    // Disable save button
+    if (saveBtn) {
+      saveBtn.disabled = true;
+    }
+  }
+
+  // Simple JavaScript functions
+  function navigateToFolder(path) {
+    window.location.href = "{{ url_for('files', folder_path='') }}" + path;
+  }
+
+  function confirmDelete(type, name) {
+    const message =
+      type === "folder"
+        ? `Are you sure you want to delete the folder "${name}" and all its contents?`
+        : `Are you sure you want to delete the file "${name}"?`;
+    return confirm(message);
+  }
+
+  function toggleMenu(event, btn) {
+    event.stopPropagation();
+    const menu = btn.nextElementSibling;
+    menu.classList.toggle("show");
+    // Close other menus
+    document.querySelectorAll(".dropdown-menu.show").forEach((m) => {
+      if (m !== menu) m.classList.remove("show");
+    });
+  }
+
+  // Close menus when clicking outside
+  document.addEventListener("click", () => {
+    document
+      .querySelectorAll(".dropdown-menu.show")
+      .forEach((m) => m.classList.remove("show"));
+  });
+
+  function closeUploadZone() {
+    document.getElementById("uploadZone").style.display = "none";
+  }
+
+  function openUploadModal() {
+    document.getElementById("uploadModal").style.display = "block";
+  }
+
+  function closeUploadModal() {
+    document.getElementById("uploadModal").style.display = "none";
+    // Reset form and button states
+    const form = document.getElementById("uploadForm");
+    const selectBtn = document.getElementById("selectFilesBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    if (form) {
+      form.reset();
+    }
+    if (selectBtn) {
+      selectBtn.textContent = "Select Files";
+      selectBtn.style.background = "";
+      selectBtn.style.color = "";
+      selectBtn.style.border = "";
+    }
+    if (saveBtn) {
+      saveBtn.disabled = true;
+    }
+  }
+
+  function validateFolderForm() {
+    const input = document.getElementById("newFolderName");
+    if (input && input.value.trim() === "") {
+      // Prevent form submission if input is empty
+      return false;
+    }
+    return true;
+  }
+
+  function openModal() {
+    const modal = document.getElementById("folderModal");
+    const input = document.getElementById("newFolderName");
+    const saveBtn = document.getElementById("folderSaveBtn");
+    
+    if (modal && input && saveBtn) {
+      modal.style.display = "block";
+      
+      // Function to update button visual state - ONLY for create folder modal
+      const updateFolderButtonVisual = () => {
+        const isEmpty = input.value.trim() === "";
+        if (isEmpty) {
+          // Make button look disabled
+          saveBtn.style.background = "rgba(51, 51, 51, 0.5)";
+          saveBtn.style.color = "rgba(255, 255, 255, 0.7)";
+          saveBtn.style.cursor = "not-allowed";
+          saveBtn.style.opacity = "0.6";
+        } else {
+          // Make button look normal
+          saveBtn.style.background = "";
+          saveBtn.style.color = "";
+          saveBtn.style.cursor = "";
+          saveBtn.style.opacity = "";
+        }
+      };
+      
+      // Clear any existing event listeners for this input
+      input.oninput = null;
+      
+      // Set initial state (visually disabled since input is empty)
+      updateFolderButtonVisual();
+      
+      // Add event listener for folder input only
+      input.oninput = updateFolderButtonVisual;
+      
+      // Focus after a short delay
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 100);
+    }
+  }
+
+  function closeModal() {
+    // Close folder modal
+    const folderModal = document.getElementById("folderModal");
+    if (folderModal) {
+      folderModal.style.display = "none";
+      // Reset form and button visual state
+      const form = document.getElementById("createFolderForm");
+      const saveBtn = document.getElementById("folderSaveBtn");
+      if (form) {
+        form.reset();
+      }
+      if (saveBtn) {
+        saveBtn.classList.add("btn-disabled");
+      }
+    }
+
+    // Close rename modal
+    const renameModal = document.getElementById("renameModal");
+    if (renameModal) {
+      renameModal.style.display = "none";
+      // Reset form and button state
+      const form = document.getElementById("renameForm");
+      const saveBtn = document.getElementById("renameSaveBtn");
+      if (form) {
+        form.reset();
+      }
+      if (saveBtn) {
+        saveBtn.disabled = true;
+      }
+      // Reset the original name
+      originalRenameName = "";
+    }
+  }
+
+  // Rename Modal Functions
+  let originalRenameName = ""; // Store the original name
+  
+  function openRenameModal(itemType, currentName, itemPath) {
+    const modal = document.getElementById("renameModal");
+    const title = document.getElementById("renameModalTitle");
+    const nameInput = document.getElementById("renameNewName");
+    const pathInput = document.getElementById("renameItemPath");
+    const saveBtn = document.getElementById("renameSaveBtn");
+
+    // Store the original name
+    originalRenameName = currentName;
+
+    // Set modal content
+    title.textContent = `Rename ${itemType}`;
+    nameInput.value = currentName;
+    pathInput.value = itemPath;
+
+    // Show modal
+    modal.style.display = "block";
+
+    // Reset button state and focus on input field
+    setTimeout(() => {
+      if (nameInput && saveBtn) {
+        // Button is disabled if input is empty OR same as original name
+        saveBtn.disabled = nameInput.value.trim() === "" || nameInput.value.trim() === originalRenameName.trim();
+        
+        // Set up input validation for this modal session
+        nameInput.oninput = function() {
+          saveBtn.disabled = nameInput.value.trim() === "" || nameInput.value.trim() === originalRenameName.trim();
+        };
+        
+        nameInput.focus();
+        nameInput.select();
+
+        // Remove file extension for easier editing
+        if (itemType === "file") {
+          const lastDotIndex = nameInput.value.lastIndexOf(".");
+          if (lastDotIndex > 0) {
+            nameInput.setSelectionRange(0, lastDotIndex);
+          }
+        }
+      }
+    }, 100);
+  }
+
+  // Audio playback functionality
+  let currentAudio = null;
+  let currentPlayButton = null;
+
+  function toggleAudioPlay(filePath, button) {
+    const playIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21 5,3"/></svg>';
+    const pauseIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+    const isPlaying = button.getAttribute('data-playing') === 'true';
+
+    // Stop current audio if playing
+    if (currentAudio && currentAudio !== button) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      if (currentPlayButton) {
+        currentPlayButton.setAttribute('data-playing', 'false');
+        currentPlayButton.innerHTML = playIcon;
+        currentPlayButton.setAttribute('title', 'Play');
+      }
+    }
+
+    if (isPlaying) {
+      // Pause current audio
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+      button.setAttribute('data-playing', 'false');
+      button.innerHTML = playIcon;
+      button.setAttribute('title', 'Play');
+      currentAudio = null;
+      currentPlayButton = null;
+    } else {
+      // Play audio
+      const audio = new Audio('/download/' + filePath);
+      audio.addEventListener('ended', function() {
+        button.setAttribute('data-playing', 'false');
+        button.innerHTML = playIcon;
+        button.setAttribute('title', 'Play');
+        currentAudio = null;
+        currentPlayButton = null;
+      });
+
+      audio.addEventListener('error', function() {
+        alert('Error playing audio file');
+        button.setAttribute('data-playing', 'false');
+        button.innerHTML = playIcon;
+        button.setAttribute('title', 'Play');
+      });
+
+      audio.play().then(() => {
+        button.setAttribute('data-playing', 'true');
+        button.innerHTML = pauseIcon;
+        button.setAttribute('title', 'Pause');
+        currentAudio = audio;
+        currentPlayButton = button;
+      }).catch(error => {
+        console.error('Error playing audio:', error);
+        alert('Error playing audio file');
+      });
+    }
+  }
+
+  // Video modal functionality
+  function openVideoModal(filePath, fileName) {
+    const modal = document.getElementById('videoModal');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const modalTitle = document.getElementById('videoModalTitle');
+    const fallbackLink = document.getElementById('videoFallbackLink');
+
+    // Set video source and title
+    videoPlayer.src = '/stream/' + filePath;
+    modalTitle.textContent = fileName;
+    fallbackLink.href = '/download/' + filePath;
+
+    // Show modal
+    modal.style.display = 'block';
+
+    // Focus on video player
+    setTimeout(() => {
+      videoPlayer.focus();
+    }, 100);
+  }
+
+  function closeVideoModal() {
+    const modal = document.getElementById('videoModal');
+    const videoPlayer = document.getElementById('videoPlayer');
+
+    // Pause video and reset
+    videoPlayer.pause();
+    videoPlayer.currentTime = 0;
+    videoPlayer.src = '';
+
+    // Hide modal
+    modal.style.display = 'none';
+  }
+
+  // Set up event listeners when page loads
+  document.addEventListener("DOMContentLoaded", function () {
+
+    // Create folder button
+    const createFolderBtn = document.getElementById("createFolderBtn");
+    if (createFolderBtn) {
+      createFolderBtn.addEventListener("click", openModal);
+    }
+
+    // Upload files button
+    const uploadFilesBtn = document.getElementById("uploadFilesBtn");
+    if (uploadFilesBtn) {
+      uploadFilesBtn.addEventListener("click", openUploadModal);
+    }
+
+    // Select files button
+    const selectFilesBtn = document.getElementById("selectFilesBtn");
+    if (selectFilesBtn) {
+      selectFilesBtn.addEventListener("click", function () {
+        document.getElementById("fileInput").click();
+      });
+    }
+
+    // Close modals when clicking outside
+    window.addEventListener("click", function (event) {
+      const folderModal = document.getElementById("folderModal");
+      const renameModal = document.getElementById("renameModal");
+      const uploadModal = document.getElementById("uploadModal");
+      const videoModal = document.getElementById("videoModal");
+
+      if (event.target === folderModal) {
+        closeModal();
+      }
+      if (event.target === renameModal) {
+        closeModal();
+      }
+      if (event.target === uploadModal) {
+        closeUploadModal();
+      }
+      if (event.target === videoModal) {
+        closeVideoModal();
+      }
+    });
+
+    // Enhanced drag and drop
+    const uploadZoneModal = document.getElementById("uploadZoneModal");
+    const fileInput = document.getElementById("fileInput");
+
+    if (uploadZoneModal && fileInput) {
+      // File input change handler
+      fileInput.addEventListener("change", function () {
+        const files = this.files;
+        
+        // Validate files
+        if (files.length > 0 && !validateFiles(files)) {
+          showSnackbar('Type not supported!', 'error');
+          resetFileSelection();
+          return;
+        }
+
+        // Update select files button text and save button state
+        const fileCount = files.length;
+        const selectBtn = document.getElementById("selectFilesBtn");
+        const saveBtn = document.getElementById("saveBtn");
+        if (fileCount > 0) {
+          selectBtn.textContent = `${fileCount} file(s) selected`;
+          selectBtn.style.background = "#333";
+          selectBtn.style.color = "white";
+          selectBtn.style.border = "none";
+          saveBtn.disabled = false;
+        } else {
+          selectBtn.textContent = "Select Files";
+          selectBtn.style.background = "";
+          saveBtn.disabled = true;
+        }
+      });
+
+      // Drag and drop events
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        uploadZoneModal.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        uploadZoneModal.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        uploadZoneModal.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight() {
+        uploadZoneModal.classList.add("dragover");
+      }
+
+      function unhighlight() {
+        uploadZoneModal.classList.remove("dragover");
+      }
+
+      // Handle file drop
+      uploadZoneModal.addEventListener("drop", function (e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        // Validate files
+        if (files.length > 0 && !validateFiles(files)) {
+          showSnackbar('Type not supported!', 'error');
+          resetFileSelection();
+          return;
+        }
+
+        fileInput.files = files;
+
+        // Update button text and save button state
+        const fileCount = files.length;
+        const selectBtn = document.getElementById("selectFilesBtn");
+        const saveBtn = document.getElementById("saveBtn");
+        if (fileCount > 0) {
+          selectBtn.textContent = `${fileCount} file(s) selected`;
+          selectBtn.style.background = "#333";
+          selectBtn.style.color = "white";
+          selectBtn.style.border = "none";
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    // Setup double-click rename (optional)
+    // setupDoubleClickRename();
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", function (e) {
+      // Escape key to close modals
+      if (e.key === "Escape") {
+        closeModal();
+        closeModal();
+        closeUploadModal();
+        closeVideoModal();
+      }
+    });
+  });
+</script>
+{% endblock %}

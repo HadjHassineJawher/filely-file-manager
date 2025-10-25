@@ -1,0 +1,40 @@
+{% extends "base.html" %} {% block content %}
+<div class="login-container">
+  <div class="login-box">
+    <h2>Hello!<br />Welcome to Filely</h2>
+    <form method="POST">
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Enter your username"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter your password"
+        />
+      </div>
+
+      <button type="submit" class="btn btn-primary action-btn-primary">
+        Login
+      </button>
+    </form>
+
+    <div class="test-info">
+      <h3>Test Account:</h3>
+      <p>
+        <strong>Username:</strong> hadjhassinejawher
+        <strong>Password:</strong> ChangeIt
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

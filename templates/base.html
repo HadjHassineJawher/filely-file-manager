@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Filely - File Manager</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <nav>
+      <div class="nav-container">
+        <h1 class="nav-logo">Filely</h1>
+        <div class="nav-links">
+          {% if request.endpoint != 'login' %}
+          <span class="username">{{ session.get('username') }}</span>
+          <a href="{{ url_for('logout') }}" title="Logout" class="logout-link">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M18.36 6.64a9 9 0 1 1-12.73 0"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M12 2v10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Logout</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- Show flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <!-- Main content goes here -->
+      {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>
