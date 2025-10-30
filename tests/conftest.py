@@ -19,7 +19,7 @@ def browser():
     chrome_options.add_argument("--disable-dev-shm-usage")
 
     # Uncomment the line below to run tests in headless mode (no visible browser)
-    # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless")
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
