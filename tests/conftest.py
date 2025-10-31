@@ -1,5 +1,7 @@
 import pytest
 import time
+import os
+import threading
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -18,15 +20,42 @@ def browser():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # Uncomment the line below to run tests in headless mode (no visible browser)
-    chrome_options.add_argument("--headless")
+    # Enable headless mode in CI environments
+    if os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('GITLAB_CI'):
+        chrome_options.add_argument("--headless")
+        # Set binary location for CI (Ubuntu)
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
 
-    service = Service(ChromeDriverManager().install())
+    chromedriver_path = ChromeDriverManager().install()
+    if 'THIRD_PARTY_NOTICES' in chromedriver_path:
+        chromedriver_path = chromedriver_path.replace('THIRD_PARTY_NOTICES.chromedriver', 'chromedriver.exe')
+    service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     yield driver
 
     driver.quit()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_flask_app():
+    """Start the Flask app in a background thread for testing (only if not in CI)"""
+    if os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('GITLAB_CI'):
+        yield  # In CI, app is started externally
+        return
+
+    from app import app
+
+    def run_app():
+        app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
+
+    thread = threading.Thread(target=run_app, daemon=True)
+    thread.start()
+    time.sleep(3)  # Wait for the app to start
+
+    yield  # Tests run here
+
+    # No need to stop the app, daemon thread will be killed when tests end
 
 
 @pytest.fixture
