@@ -48,7 +48,7 @@ class TestFileOperations:
 
         # Submit upload
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Verify upload success
@@ -90,7 +90,7 @@ class TestFileOperations:
 
         # Submit upload
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Verify upload success
@@ -130,7 +130,7 @@ class TestFileOperations:
         time.sleep(slow_actions['input'])
 
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Find the rename button for the uploaded file
@@ -191,7 +191,7 @@ class TestFileOperations:
         time.sleep(slow_actions['input'])
 
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Find preview button for the most recent file (document.txt)
@@ -252,7 +252,7 @@ class TestFileOperations:
         time.sleep(slow_actions['input'])
 
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Upload second file
@@ -266,7 +266,7 @@ class TestFileOperations:
         time.sleep(slow_actions['input'])
 
         save_button = browser.find_element(By.ID, 'saveBtn')
-        save_button.click()
+        browser.execute_script("arguments[0].click();", save_button)
         time.sleep(slow_actions['action'])
 
         # Try to rename document.txt to contract.pdf (should conflict)
