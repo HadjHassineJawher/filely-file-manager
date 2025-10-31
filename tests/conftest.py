@@ -25,10 +25,11 @@ def browser():
         chrome_options.add_argument("--headless")
         # Set binary location for CI (Ubuntu)
         chrome_options.binary_location = "/usr/bin/chromium-browser"
-
-    chromedriver_path = ChromeDriverManager().install()
-    if 'THIRD_PARTY_NOTICES' in chromedriver_path:
-        chromedriver_path = chromedriver_path.replace('THIRD_PARTY_NOTICES.chromedriver', 'chromedriver.exe')
+        chromedriver_path = '/usr/bin/chromedriver'
+    else:
+        chromedriver_path = ChromeDriverManager().install()
+        if 'THIRD_PARTY_NOTICES' in chromedriver_path:
+            chromedriver_path = chromedriver_path.replace('THIRD_PARTY_NOTICES.chromedriver', 'chromedriver.exe')
     service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
